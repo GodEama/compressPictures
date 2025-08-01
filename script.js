@@ -2,7 +2,9 @@ class ImageCompressor {
     constructor() {
         this.selectedFiles = [];
         this.compressedResults = [];
+        this.formatSupport = this.detectFormatSupport();
         this.initializeEventListeners();
+        this.initializeFormatOptions();
     }
 
     initializeEventListeners() {
@@ -299,11 +301,94 @@ class ImageCompressor {
         });
     }
 
-    supportsWebP() {
+    detectFormatSupport() {
         const canvas = document.createElement('canvas');
         canvas.width = 1;
         canvas.height = 1;
-        return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+        
+        return {
+            webp: canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0,
+            avif: canvas.toDataURL('image/avif').indexOf('data:image/avif') === 0,
+            heif: this.detectHEIFSupport()
+        };
+    }
+
+    detectHEIFSupport() {
+        // HEIF支持检测：主要在Safari中支持
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
+        const isIOS = /ipad|iphone|ipod/.test(userAgent);
+        const isMacOS = userAgent.includes('mac os x');
+        
+        // 基本检测：Safari浏览器或iOS/macOS系统
+        return isSafari || isIOS || isMacOS;
+    }
+
+    initializeFormatOptions() {
+        const formatSelect = document.getElementById('formatSelect');
+        const formatInfo = document.getElementById('formatInfo');
+        const formatNote = formatInfo.querySelector('.format-note');
+        const avifOption = document.getElementById('avifOption');
+        const heifOption = document.getElementById('heifOption');
+
+        // 根据浏览器支持情况启用/禁用选项
+        if (!this.formatSupport.avif) {
+            avifOption.disabled = true;
+            avifOption.textContent = 'AVIF (不支持)';
+        }
+
+        if (!this.formatSupport.heif) {
+            heifOption.disabled = true;
+            heifOption.textContent = 'HEIF (不支持)';
+        } else {
+            heifOption.disabled = false;
+            heifOption.textContent = 'HEIF (Safari专用)';
+        }
+
+        // 格式选择变化时显示提示信息
+        formatSelect.addEventListener('change', (e) => {
+            const selectedFormat = e.target.value;
+            this.showFormatInfo(selectedFormat, formatInfo, formatNote);
+        });
+    }
+
+    showFormatInfo(format, formatInfo, formatNote) {
+        let message = '';
+        let showInfo = false;
+
+        switch (format) {
+            case 'avif':
+                if (!this.formatSupport.avif) {
+                    message = '⚠️ 您的浏览器不支持AVIF格式，将自动降级为JPEG';
+                    showInfo = true;
+                } else {
+                    message = '✅ AVIF格式提供最佳压缩率，文件更小';
+                    showInfo = true;
+                }
+                break;
+            case 'heif':
+                if (!this.formatSupport.heif) {
+                    message = '⚠️ 您的浏览器不支持HEIF格式，将自动降级为JPEG';
+                    showInfo = true;
+                } else {
+                    message = '✅ HEIF格式在Apple设备上提供优秀的压缩效果';
+                    showInfo = true;
+                }
+                break;
+            case 'webp':
+                if (!this.formatSupport.webp) {
+                    message = '⚠️ 您的浏览器不支持WebP格式，将自动降级为JPEG';
+                    showInfo = true;
+                }
+                break;
+        }
+
+        if (showInfo) {
+            formatNote.textContent = message;
+            formatInfo.style.display = 'block';
+        } else {
+            formatInfo.style.display = 'none';
+        }
     }
 
     determineOutputFormat(originalType, selectedFormat) {
@@ -315,7 +400,29 @@ class ImageCompressor {
         } else if (selectedFormat === 'png') {
             return 'image/png';
         } else if (selectedFormat === 'webp') {
-            return 'image/webp';
+            // WebP降级策略
+            if (this.formatSupport.webp) {
+                return 'image/webp';
+            } else {
+                console.warn('WebP不支持，降级为JPEG');
+                return 'image/jpeg';
+            }
+        } else if (selectedFormat === 'avif') {
+            // AVIF降级策略
+            if (this.formatSupport.avif) {
+                return 'image/avif';
+            } else {
+                console.warn('AVIF不支持，降级为JPEG');
+                return 'image/jpeg';
+            }
+        } else if (selectedFormat === 'heif') {
+            // HEIF降级策略
+            if (this.formatSupport.heif) {
+                return 'image/heif';
+            } else {
+                console.warn('HEIF不支持，降级为JPEG');
+                return 'image/jpeg';
+            }
         }
         return originalType;
     }

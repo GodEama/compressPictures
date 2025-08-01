@@ -421,13 +421,15 @@ class ImageCompressor {
         return card;
     }
 
-    downloadImage(index) {
+    async downloadImage(index) {
         const result = this.compressedResults[index];
         
-        // 使用安全的下载方法
-        this.safeDownloadBlob(result.compressed.blob, result.fileName);
+        // 直接下载，无确认弹框
+        this.safeDownloadBlob(result.compressed.blob, result.fileName, false);
         
-        this.showNotification('下载开始', 'success');
+        // 显示下载成功通知
+        const savings = ((result.original.size - result.compressed.size) / result.original.size * 100).toFixed(1);
+        this.showNotification(`成功下载 ${result.fileName}，节省 ${savings}% 空间`, 'success');
     }
 
     async downloadAll() {
@@ -438,7 +440,10 @@ class ImageCompressor {
 
         // 如果只有一个文件，直接下载
         if (this.compressedResults.length === 1) {
-            this.downloadImage(0);
+            const result = this.compressedResults[0];
+            this.safeDownloadBlob(result.compressed.blob, result.fileName, false);
+            const savings = ((result.original.size - result.compressed.size) / result.original.size * 100).toFixed(1);
+            this.showNotification(`成功下载 ${result.fileName}，节省 ${savings}% 空间`, 'success');
             return;
         }
 
@@ -529,7 +534,7 @@ class ImageCompressor {
             const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_');
             const zipFileName = `compressed_images_${timestamp}.zip`;
             
-            // 使用更安全的下载方式，ZIP文件允许用户选择保存位置
+            // ZIP文件使用文件选择器以避免安全警告
             await this.safeDownloadBlob(zipBlob, zipFileName, true);
 
             // 计算总的压缩统计
@@ -628,7 +633,7 @@ class ImageCompressor {
         await writable.close();
     }
 
-    // 优化的传统下载方法
+    // 优化的传统下载方法，通过用户交互减少安全警告
     downloadWithTraditionalMethod(blob, fileName) {
         // 确保blob有正确的MIME类型
         let mimeType = blob.type;
@@ -669,33 +674,39 @@ class ImageCompressor {
         link.setAttribute('target', '_self');
         link.setAttribute('type', mimeType);
         
-        // 隐藏链接
+        // 隐藏链接但保持在DOM中以便用户交互
         link.style.display = 'none';
         link.style.position = 'absolute';
         link.style.left = '-9999px';
         link.style.visibility = 'hidden';
         
-        // 添加到DOM并触发下载
+        // 添加到DOM
         document.body.appendChild(link);
         
-        // 使用用户交互触发下载（更安全）
-        setTimeout(() => {
-            // 模拟用户点击
+        // 立即触发下载，因为这是在用户确认后调用的
+        // 浏览器会认为这是用户交互的直接结果
+        try {
+            // 直接点击，不使用setTimeout，保持用户交互的连续性
+            link.click();
+        } catch (error) {
+            // 如果直接点击失败，使用事件分发
             const event = new MouseEvent('click', {
                 bubbles: true,
                 cancelable: true,
-                view: window
+                view: window,
+                // 标记为可信事件
+                isTrusted: true
             });
             link.dispatchEvent(event);
-            
-            // 延迟清理，确保下载开始
-            setTimeout(() => {
-                if (document.body.contains(link)) {
-                    document.body.removeChild(link);
-                }
-                URL.revokeObjectURL(url);
-            }, 3000);
-        }, 100);
+        }
+        
+        // 延迟清理，确保下载开始
+        setTimeout(() => {
+            if (document.body.contains(link)) {
+                document.body.removeChild(link);
+            }
+            URL.revokeObjectURL(url);
+        }, 1000);
     }
 
     supportsBatchDownload() {
@@ -729,8 +740,9 @@ class ImageCompressor {
             `;
             batchBtn.disabled = true;
             
-            // 下载当前文件
-            this.downloadImage(i);
+            // 逐个下载时直接下载，不显示确认对话框
+            const result = this.compressedResults[i];
+            this.safeDownloadBlob(result.compressed.blob, result.fileName);
             
             // 等待一小段时间，避免浏览器阻止多个下载
             await new Promise(resolve => setTimeout(resolve, 500));

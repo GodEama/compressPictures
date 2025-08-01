@@ -3,32 +3,59 @@
 ## 📦 发布到 GitHub
 
 ### 1. 创建 GitHub 仓库
-1. 登录 [GitHub](https://github.com)
-2. 点击右上角的 "+" 按钮，选择 "New repository"
-3. 填写仓库信息：
-   - Repository name: `compressPictures`
-   - Description: `智能图片压缩工具 - 现代化的客户端图片压缩网页应用`
-   - 选择 Public
-   - 不要勾选 "Initialize this repository with a README"
+✅ **已完成** - 您的仓库地址：https://github.com/GodEama/compressPictures
 
 ### 2. 推送代码到 GitHub
-```bash
-# 添加远程仓库
-git remote add origin https://github.com/GodEama/compressPictures.git
+✅ **已完成** - 代码已成功推送
 
-# 推送代码
-git branch -M main
-git push -u origin main
-```
+### 3. 启用 GitHub Pages（重要！）
 
-### 3. 启用 GitHub Pages
-1. 进入仓库页面
-2. 点击 "Settings" 选项卡
-3. 在左侧菜单中找到 "Pages"
-4. 在 "Source" 部分选择 "Deploy from a branch"
-5. 选择 "main" 分支和 "/ (root)" 文件夹
-6. 点击 "Save"
-7. 等待几分钟，您的网站将在 `https://GodEama.github.io/compressPictures` 可用
+**方法一：通过仓库设置页面**
+1. 访问您的仓库：https://github.com/GodEama/compressPictures
+2. 点击仓库顶部的 **"Settings"** 选项卡
+3. 在左侧菜单中找到 **"Pages"** 选项
+4. 在 **"Source"** 部分：
+   - 选择 **"Deploy from a branch"**
+   - Branch 选择：**"main"**
+   - Folder 选择：**"/ (root)"**
+5. 点击 **"Save"** 按钮
+6. 等待 2-5 分钟，页面会显示绿色的成功消息
+7. 您的网站将在 `https://GodEama.github.io/compressPictures` 可用
+
+**方法二：直接访问Pages设置**
+- 直接访问：https://github.com/GodEama/compressPictures/settings/pages
+- 按照上述步骤 4-7 操作
+
+### 4. 验证部署状态
+- 在 Pages 设置页面查看部署状态
+- 绿色勾号 ✅ 表示部署成功
+- 黄色圆圈 🟡 表示正在部署
+- 红色叉号 ❌ 表示部署失败
+
+### 5. 故障排除
+
+**如果演示地址打不开，请检查：**
+
+1. **Pages 是否已启用**
+   - 访问：https://github.com/GodEama/compressPictures/settings/pages
+   - 确认 Source 已设置为 "Deploy from a branch"
+
+2. **等待时间**
+   - 首次启用需要 2-10 分钟
+   - 后续更新需要 1-5 分钟
+
+3. **检查部署状态**
+   - 访问：https://github.com/GodEama/compressPictures/actions
+   - 查看 "pages build and deployment" 工作流状态
+
+4. **常见问题解决**
+   - 清除浏览器缓存
+   - 尝试无痕模式访问
+   - 检查网络连接
+
+**部署成功后的访问地址：**
+- 🌐 **演示地址**：https://GodEama.github.io/compressPictures
+- 📱 **移动端友好**：支持手机和平板访问
 
 ## 📦 发布到 Gitee
 

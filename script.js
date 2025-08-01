@@ -270,6 +270,17 @@ class ImageCompressor {
             if (primaryFormat === 'image/jpeg' && quality > 0.5) {
                 strategies.push(this.compressWithFormat(canvas, primaryFormat, Math.max(0.3, quality - 0.2)));
             }
+            
+            // 为AVIF和WebP格式添加多质量级别压缩
+            if (primaryFormat === 'image/avif' || primaryFormat === 'image/webp') {
+                // 尝试更高的压缩率
+                if (quality > 0.6) {
+                    strategies.push(this.compressWithFormat(canvas, primaryFormat, Math.max(0.4, quality - 0.2)));
+                }
+                if (quality > 0.8) {
+                    strategies.push(this.compressWithFormat(canvas, primaryFormat, Math.max(0.5, quality - 0.3)));
+                }
+            }
         }
         
         return Promise.all(strategies);
@@ -291,13 +302,27 @@ class ImageCompressor {
 
     compressWithFormat(canvas, format, quality) {
         return new Promise((resolve) => {
+            // PNG格式不支持质量参数，其他格式都支持
+            const useQuality = format !== 'image/png';
+            
             canvas.toBlob((blob) => {
+                if (!blob) {
+                    console.warn(`${format} 格式压缩失败，blob为null`);
+                    resolve({
+                        blob: null,
+                        size: Infinity,
+                        format: format
+                    });
+                    return;
+                }
+                
+                console.log(`${format} 压缩成功，质量: ${useQuality ? quality : '无质量参数'}, 大小: ${blob.size} bytes`);
                 resolve({
                     blob: blob,
-                    size: blob ? blob.size : Infinity,
+                    size: blob.size,
                     format: format
                 });
-            }, format, format === 'image/png' ? undefined : quality);
+            }, format, useQuality ? quality : undefined);
         });
     }
 

@@ -126,6 +126,17 @@ class ImageCompressor {
         const quality = parseInt(document.getElementById('qualitySlider').value) / 100;
         const format = document.getElementById('formatSelect').value;
         
+        // 检查用户选择的格式是否被浏览器支持
+        if (format === 'webp' && !this.formatSupport.webp) {
+            this.showNotification('您的浏览器不支持WebP格式编码，请选择其他格式或使用支持WebP的浏览器', 'error');
+            return;
+        }
+        
+        if (format === 'avif' && !this.formatSupport.avif) {
+            this.showNotification('您的浏览器不支持AVIF格式编码，请选择其他格式或使用支持AVIF的浏览器', 'error');
+            return;
+        }
+        
         this.showProgressSection();
         this.compressedResults = [];
 
@@ -138,7 +149,7 @@ class ImageCompressor {
                 this.compressedResults.push(compressedResult);
             } catch (error) {
                 console.error('压缩失败:', error);
-                this.showNotification(`压缩 ${file.name} 失败`, 'error');
+                this.showNotification(`压缩 ${file.name} 失败: ${error.message}`, 'error');
             }
         }
 
@@ -283,7 +294,16 @@ class ImageCompressor {
             }
         }
         
-        return Promise.all(strategies);
+        const results = await Promise.all(strategies);
+        
+        // 过滤掉失败的结果
+        const validResults = results.filter(result => result.blob !== null);
+        
+        if (validResults.length === 0) {
+            throw new Error(`无法压缩为${primaryFormat}格式，浏览器可能不支持此格式`);
+        }
+        
+        return validResults;
     }
 
     checkTransparency(canvas) {
@@ -308,10 +328,19 @@ class ImageCompressor {
             canvas.toBlob((blob) => {
                 if (!blob) {
                     console.warn(`${format} 格式压缩失败，blob为null`);
+                    
+                    // 检查是否是浏览器不支持的格式
+                    if (format === 'image/webp' && !this.formatSupport.webp) {
+                        console.error('浏览器不支持WebP格式编码');
+                    } else if (format === 'image/avif' && !this.formatSupport.avif) {
+                        console.error('浏览器不支持AVIF格式编码');
+                    }
+                    
                     resolve({
                         blob: null,
                         size: Infinity,
-                        format: format
+                        format: format,
+                        error: `浏览器不支持${format}格式编码`
                     });
                     return;
                 }
@@ -397,21 +426,33 @@ class ImageCompressor {
         switch (format) {
             case 'avif':
                 if (!this.formatSupport.avif) {
-                    message = '⚠️ 您的浏览器不支持AVIF编码。AVIF是最新的图像格式，提供最佳压缩率，但需要较新的浏览器支持。建议使用WebP格式作为替代。';
+                    message = '⚠️ 您的浏览器不支持AVIF格式编码。选择此格式将无法进行压缩，请选择其他格式或使用支持AVIF的现代浏览器。';
                     showInfo = true;
                 } else {
-                    message = '✅ AVIF格式提供最佳压缩率，文件比JPEG小30-50%';
+                    message = '✅ AVIF格式提供最佳压缩率，文件比JPEG小30-50%。输出文件将强制为AVIF格式。';
                     showInfo = true;
                 }
                 break;
             case 'webp':
                 if (!this.formatSupport.webp) {
-                    message = '⚠️ 您的浏览器不支持WebP格式，将自动降级为JPEG';
+                    message = '⚠️ 您的浏览器不支持WebP格式编码。选择此格式将无法进行压缩，请选择其他格式或使用支持WebP的浏览器。';
                     showInfo = true;
                 } else {
-                    message = '✅ WebP格式提供良好的压缩率和兼容性';
+                    message = '✅ WebP格式提供良好的压缩率和兼容性。输出文件将强制为WebP格式。';
                     showInfo = true;
                 }
+                break;
+            case 'jpeg':
+                message = '✅ JPEG格式兼容性最佳，适合照片压缩。输出文件将强制为JPEG格式。';
+                showInfo = true;
+                break;
+            case 'png':
+                message = '✅ PNG格式支持透明度，适合图标和图形。输出文件将强制为PNG格式。';
+                showInfo = true;
+                break;
+            case 'auto':
+                message = '🔄 自动模式将保持原图格式不变，确保最佳兼容性。';
+                showInfo = true;
                 break;
         }
 
@@ -425,28 +466,18 @@ class ImageCompressor {
 
     determineOutputFormat(originalType, selectedFormat) {
         if (selectedFormat === 'auto') {
-            // 自动模式：优先保持原图格式，确保兼容性
+            // 自动模式：保持原图格式
             return originalType;
         } else if (selectedFormat === 'jpeg') {
             return 'image/jpeg';
         } else if (selectedFormat === 'png') {
             return 'image/png';
         } else if (selectedFormat === 'webp') {
-            // WebP降级策略
-            if (this.formatSupport.webp) {
-                return 'image/webp';
-            } else {
-                console.warn('WebP不支持，降级为JPEG');
-                return 'image/jpeg';
-            }
+            // 用户选择WebP，强制输出WebP格式
+            return 'image/webp';
         } else if (selectedFormat === 'avif') {
-            // AVIF降级策略
-            if (this.formatSupport.avif) {
-                return 'image/avif';
-            } else {
-                console.warn('AVIF不支持，降级为JPEG');
-                return 'image/jpeg';
-            }
+            // 用户选择AVIF，强制输出AVIF格式
+            return 'image/avif';
         }
         return originalType;
     }

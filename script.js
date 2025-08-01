@@ -529,8 +529,8 @@ class ImageCompressor {
             const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_');
             const zipFileName = `compressed_images_${timestamp}.zip`;
             
-            // 使用更安全的下载方式，模仿TinyPNG的实现
-            await this.safeDownloadBlob(zipBlob, zipFileName);
+            // 使用更安全的下载方式，ZIP文件允许用户选择保存位置
+            await this.safeDownloadBlob(zipBlob, zipFileName, true);
 
             // 计算总的压缩统计
             const totalOriginalSize = this.compressedResults.reduce((sum, result) => sum + result.original.size, 0);
@@ -555,18 +555,18 @@ class ImageCompressor {
     }
 
     // 新增：安全的文件下载方法，减少Windows安全警告
-    async safeDownloadBlob(blob, fileName) {
+    async safeDownloadBlob(blob, fileName, useFilePicker = false) {
         return new Promise((resolve) => {
             try {
-                // 方法1: 尝试使用现代的 showSaveFilePicker API（如果支持）
-                if (window.showSaveFilePicker) {
+                // 只有在明确指定时才使用文件选择器（比如ZIP批量下载）
+                if (useFilePicker && window.showSaveFilePicker) {
                     this.downloadWithFilePicker(blob, fileName).then(resolve).catch(() => {
                         // 降级到传统方法
                         this.downloadWithTraditionalMethod(blob, fileName);
                         resolve();
                     });
                 } else {
-                    // 方法2: 使用优化的传统下载方法
+                    // 直接使用传统下载方法，保存到默认位置
                     this.downloadWithTraditionalMethod(blob, fileName);
                     resolve();
                 }
@@ -581,12 +581,46 @@ class ImageCompressor {
 
     // 使用现代文件系统API下载（减少安全警告）
     async downloadWithFilePicker(blob, fileName) {
+        // 根据文件扩展名确定文件类型
+        const ext = fileName.split('.').pop().toLowerCase();
+        let fileTypes;
+        
+        switch (ext) {
+            case 'zip':
+                fileTypes = [{
+                    description: 'ZIP files',
+                    accept: { 'application/zip': ['.zip'] }
+                }];
+                break;
+            case 'jpg':
+            case 'jpeg':
+                fileTypes = [{
+                    description: 'JPEG images',
+                    accept: { 'image/jpeg': ['.jpg', '.jpeg'] }
+                }];
+                break;
+            case 'png':
+                fileTypes = [{
+                    description: 'PNG images',
+                    accept: { 'image/png': ['.png'] }
+                }];
+                break;
+            case 'webp':
+                fileTypes = [{
+                    description: 'WebP images',
+                    accept: { 'image/webp': ['.webp'] }
+                }];
+                break;
+            default:
+                fileTypes = [{
+                    description: 'All files',
+                    accept: { '*/*': ['.*'] }
+                }];
+        }
+        
         const fileHandle = await window.showSaveFilePicker({
             suggestedName: fileName,
-            types: [{
-                description: 'ZIP files',
-                accept: { 'application/zip': ['.zip'] }
-            }]
+            types: fileTypes
         });
         
         const writable = await fileHandle.createWritable();

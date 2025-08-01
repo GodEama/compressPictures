@@ -35,3 +35,7 @@ node_modules/
 # 备份文件
 *.bak
 *.backup
+
+# 部署相关文件（不应推送到远端）
+publish.bat
+DEPLOY.md

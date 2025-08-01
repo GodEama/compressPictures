@@ -5,7 +5,6 @@
 ## 🌐 在线演示
 
 - **GitHub Pages**: [https://GodEama.github.io/compressPictures](https://GodEama.github.io/compressPictures)
-- **Gitee Pages**: [https://gxjios.gitee.io/compress-pictures](https://gxjios.gitee.io/compress-pictures)
 
 ## 🌟 主要特性
 

@@ -2,9 +2,9 @@ class ImageCompressor {
     constructor() {
         this.selectedFiles = [];
         this.compressedResults = [];
-        this.formatSupport = this.detectFormatSupport();
+        this.formatSupport = { webp: false, avif: false };
         this.initializeEventListeners();
-        this.initializeFormatOptions();
+        this.initializeFormatSupport();
     }
 
     initializeEventListeners() {
@@ -301,27 +301,46 @@ class ImageCompressor {
         });
     }
 
-    detectFormatSupport() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1;
-        canvas.height = 1;
-        
-        return {
-            webp: canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0,
-            avif: canvas.toDataURL('image/avif').indexOf('data:image/avif') === 0,
-            heif: this.detectHEIFSupport()
+    async detectFormatSupport() {
+        const support = {
+            webp: false,
+            avif: false
         };
+        
+        // 检测WebP支持
+        try {
+            const webpCanvas = document.createElement('canvas');
+            webpCanvas.width = webpCanvas.height = 1;
+            const webpBlob = await new Promise(resolve => {
+                webpCanvas.toBlob(resolve, 'image/webp');
+            });
+            support.webp = webpBlob !== null;
+        } catch (e) {
+            support.webp = false;
+        }
+        
+        // 检测AVIF支持
+        try {
+            const avifCanvas = document.createElement('canvas');
+            avifCanvas.width = avifCanvas.height = 1;
+            const avifBlob = await new Promise(resolve => {
+                avifCanvas.toBlob(resolve, 'image/avif');
+            });
+            support.avif = avifBlob !== null;
+        } catch (e) {
+            support.avif = false;
+        }
+        
+        return support;
     }
 
-    detectHEIFSupport() {
-        // HEIF支持检测：主要在Safari中支持
-        const userAgent = navigator.userAgent.toLowerCase();
-        const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
-        const isIOS = /ipad|iphone|ipod/.test(userAgent);
-        const isMacOS = userAgent.includes('mac os x');
-        
-        // 基本检测：Safari浏览器或iOS/macOS系统
-        return isSafari || isIOS || isMacOS;
+
+
+    async initializeFormatSupport() {
+        console.log('开始检测格式支持...');
+        this.formatSupport = await this.detectFormatSupport();
+        console.log('格式支持检测结果:', this.formatSupport);
+        this.initializeFormatOptions();
     }
 
     initializeFormatOptions() {
@@ -329,20 +348,14 @@ class ImageCompressor {
         const formatInfo = document.getElementById('formatInfo');
         const formatNote = formatInfo.querySelector('.format-note');
         const avifOption = document.getElementById('avifOption');
-        const heifOption = document.getElementById('heifOption');
 
         // 根据浏览器支持情况启用/禁用选项
         if (!this.formatSupport.avif) {
             avifOption.disabled = true;
-            avifOption.textContent = 'AVIF (不支持)';
-        }
-
-        if (!this.formatSupport.heif) {
-            heifOption.disabled = true;
-            heifOption.textContent = 'HEIF (不支持)';
+            avifOption.textContent = 'AVIF (浏览器不支持编码)';
         } else {
-            heifOption.disabled = false;
-            heifOption.textContent = 'HEIF (Safari专用)';
+            avifOption.disabled = false;
+            avifOption.textContent = 'AVIF (最新格式，高压缩率)';
         }
 
         // 格式选择变化时显示提示信息
@@ -359,25 +372,19 @@ class ImageCompressor {
         switch (format) {
             case 'avif':
                 if (!this.formatSupport.avif) {
-                    message = '⚠️ 您的浏览器不支持AVIF格式，将自动降级为JPEG';
+                    message = '⚠️ 您的浏览器不支持AVIF编码。AVIF是最新的图像格式，提供最佳压缩率，但需要较新的浏览器支持。建议使用WebP格式作为替代。';
                     showInfo = true;
                 } else {
-                    message = '✅ AVIF格式提供最佳压缩率，文件更小';
-                    showInfo = true;
-                }
-                break;
-            case 'heif':
-                if (!this.formatSupport.heif) {
-                    message = '⚠️ 您的浏览器不支持HEIF格式，将自动降级为JPEG';
-                    showInfo = true;
-                } else {
-                    message = '✅ HEIF格式在Apple设备上提供优秀的压缩效果';
+                    message = '✅ AVIF格式提供最佳压缩率，文件比JPEG小30-50%';
                     showInfo = true;
                 }
                 break;
             case 'webp':
                 if (!this.formatSupport.webp) {
                     message = '⚠️ 您的浏览器不支持WebP格式，将自动降级为JPEG';
+                    showInfo = true;
+                } else {
+                    message = '✅ WebP格式提供良好的压缩率和兼容性';
                     showInfo = true;
                 }
                 break;
@@ -413,14 +420,6 @@ class ImageCompressor {
                 return 'image/avif';
             } else {
                 console.warn('AVIF不支持，降级为JPEG');
-                return 'image/jpeg';
-            }
-        } else if (selectedFormat === 'heif') {
-            // HEIF降级策略
-            if (this.formatSupport.heif) {
-                return 'image/heif';
-            } else {
-                console.warn('HEIF不支持，降级为JPEG');
                 return 'image/jpeg';
             }
         }

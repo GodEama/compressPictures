@@ -292,6 +292,21 @@ class ImageCompressor {
                     strategies.push(this.compressWithFormat(canvas, primaryFormat, Math.max(0.5, quality - 0.3)));
                 }
             }
+            
+            // 为PNG格式添加特殊的压缩策略
+            if (primaryFormat === 'image/png') {
+                // PNG压缩策略1: 尝试缩小尺寸
+                if (canvas.width > 1024 || canvas.height > 1024) {
+                    const smallerCanvas = this.createResizedCanvas(canvas, 0.8);
+                    strategies.push(this.compressWithFormat(smallerCanvas, primaryFormat, quality));
+                }
+                
+                // PNG压缩策略2: 如果质量较低，尝试更小的尺寸
+                if (quality < 0.7) {
+                    const muchSmallerCanvas = this.createResizedCanvas(canvas, 0.6);
+                    strategies.push(this.compressWithFormat(muchSmallerCanvas, primaryFormat, quality));
+                }
+            }
         }
         
         const results = await Promise.all(strategies);
@@ -304,6 +319,25 @@ class ImageCompressor {
         }
         
         return validResults;
+    }
+
+    createResizedCanvas(originalCanvas, scaleFactor) {
+        const newWidth = Math.floor(originalCanvas.width * scaleFactor);
+        const newHeight = Math.floor(originalCanvas.height * scaleFactor);
+        
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = newWidth;
+        resizedCanvas.height = newHeight;
+        
+        const ctx = resizedCanvas.getContext('2d');
+        // 使用高质量的图像缩放
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // 绘制缩放后的图像
+        ctx.drawImage(originalCanvas, 0, 0, newWidth, newHeight);
+        
+        return resizedCanvas;
     }
 
     checkTransparency(canvas) {
@@ -547,16 +581,16 @@ class ImageCompressor {
             ratioBackground = '#fee2e2';
         }
 
-        // 获取文件扩展名
-        const fileName = result.original.file.name;
-        const fileExtension = fileName.split('.').pop().toUpperCase();
+        // 获取压缩后的文件格式（而不是原始文件格式）
+        const compressedFormat = result.compressed.format;
+        const fileExtension = compressedFormat.split('/')[1].toUpperCase();
         
         card.innerHTML = `
             <div class="file-thumbnail">
-                <img src="${result.compressed.url}" alt="${fileName}">
+                <img src="${result.compressed.url}" alt="${result.fileName}">
             </div>
             <div class="file-info">
-                <div class="file-name">${fileName}</div>
+                <div class="file-name">${result.fileName}</div>
                 <div class="file-details">
                     <span class="file-type">${fileExtension}</span>
                     <span class="file-size">${this.formatFileSize(result.original.size)}</span>

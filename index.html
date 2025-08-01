@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能图片压缩工具 - 保持质量，减小体积</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="40" height="40" rx="8" fill="#4F46E5"/>
+                    <path d="M12 16L20 24L28 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M20 8V24" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M8 32H32" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <h1>智能图片压缩</h1>
+            </div>
+            <p class="subtitle">保持图片质量的前提下，最大化压缩文件大小</p>
+        </header>
+
+        <main class="main">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <svg class="upload-icon" width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="64" height="64" rx="12" fill="#F3F4F6"/>
+                            <path d="M32 20V44M20 32L32 20L44 32" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <h3>拖拽图片到这里或点击上传</h3>
+                        <p>支持 JPEG、PNG、WebP 格式，最大 10MB</p>
+                        <button class="upload-btn" id="uploadBtn">选择图片</button>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml" multiple style="display: none;">
+                </div>
+            </div>
+
+            <div class="settings-section" id="settingsSection" style="display: none;">
+                <div class="settings-card">
+                    <h3>压缩设置</h3>
+                    <div class="setting-group">
+                        <label for="qualitySlider">图片质量: <span id="qualityValue">80</span>%</label>
+                        <input type="range" id="qualitySlider" min="10" max="100" value="80" class="slider">
+                        <div class="quality-labels">
+                            <span>最小体积</span>
+                            <span>最佳平衡</span>
+                            <span>最高质量</span>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label for="formatSelect">输出格式:</label>
+                        <select id="formatSelect" class="format-select">
+                            <option value="auto">自动选择</option>
+                            <option value="jpeg">JPEG</option>
+                            <option value="png">PNG</option>
+                            <option value="webp">WebP</option>
+                        </select>
+                    </div>
+                    <button class="compress-btn" id="compressBtn">开始压缩</button>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h3>压缩结果</h3>
+                    <button class="batch-download-btn" id="batchDownloadBtn" onclick="compressor.downloadAll()">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 17V19C3 19.5523 3.44772 20 4 20H16C16.5523 20 17 19.5523 17 19V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M10 3V15M10 15L6 11M10 15L14 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M7 7H5C4.44772 7 4 7.44772 4 8V12C4 12.5523 4.44772 13 5 13H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M13 7H15C15.5523 7 16 7.44772 16 8V12C16 12.5523 15.5523 13 15 13H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        下载ZIP压缩包
+                    </button>
+                </div>
+                <div class="results-grid" id="resultsGrid">
+                    <!-- 压缩结果将在这里动态生成 -->
+                </div>
+            </div>
+
+            <div class="progress-section" id="progressSection" style="display: none;">
+                <div class="progress-card">
+                    <h3>正在压缩...</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="progressText">准备中...</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="features">
+                <div class="feature">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 17L12 22L22 17" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 12L12 17L22 12" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div>
+                        <h4>智能压缩</h4>
+                        <p>自动分析图片内容，选择最佳压缩策略</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 12L11 14L15 10" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div>
+                        <h4>质量保证</h4>
+                        <p>在保持视觉质量的前提下最大化压缩比例</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div>
+                        <h4>极速处理</h4>
+                        <p>客户端处理，无需上传，保护隐私安全</p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- JSZip库用于创建ZIP文件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

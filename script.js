@@ -2,7 +2,7 @@ class ImageCompressor {
     constructor() {
         this.selectedFiles = [];
         this.compressedResults = [];
-        this.formatSupport = { webp: false, avif: false };
+        this.formatSupport = { webp: false };
         this.initializeEventListeners();
         this.initializeFormatSupport();
     }
@@ -129,11 +129,6 @@ class ImageCompressor {
         // 检查用户选择的格式是否被浏览器支持
         if (format === 'webp' && !this.formatSupport.webp) {
             this.showNotification('您的浏览器不支持WebP格式编码，请选择其他格式或使用支持WebP的浏览器', 'error');
-            return;
-        }
-        
-        if (format === 'avif' && !this.formatSupport.avif) {
-            this.showNotification('您的浏览器不支持AVIF格式编码，请选择其他格式或使用支持AVIF的浏览器', 'error');
             return;
         }
         
@@ -282,8 +277,8 @@ class ImageCompressor {
                 strategies.push(this.compressWithFormat(canvas, primaryFormat, Math.max(0.3, quality - 0.2)));
             }
             
-            // 为AVIF和WebP格式添加多质量级别压缩
-            if (primaryFormat === 'image/avif' || primaryFormat === 'image/webp') {
+            // 为WebP格式添加多质量级别压缩
+            if (primaryFormat === 'image/webp') {
                 // 尝试更高的压缩率
                 if (quality > 0.6) {
                     strategies.push(this.compressWithFormat(canvas, primaryFormat, Math.max(0.4, quality - 0.2)));
@@ -295,17 +290,36 @@ class ImageCompressor {
             
             // 为PNG格式添加特殊的压缩策略
             if (primaryFormat === 'image/png') {
-                // PNG压缩策略1: 尝试缩小尺寸
-                if (canvas.width > 1024 || canvas.height > 1024) {
-                    const smallerCanvas = this.createResizedCanvas(canvas, 0.8);
-                    strategies.push(this.compressWithFormat(smallerCanvas, primaryFormat, quality));
+                // PNG压缩策略1: 总是尝试缩小尺寸（根据质量参数调整缩放比例）
+                let scaleFactor = 1.0;
+                if (quality < 0.3) {
+                    scaleFactor = 0.5; // 低质量：缩放到50%
+                } else if (quality < 0.5) {
+                    scaleFactor = 0.6; // 中低质量：缩放到60%
+                } else if (quality < 0.7) {
+                    scaleFactor = 0.7; // 中等质量：缩放到70%
+                } else if (quality < 0.9) {
+                    scaleFactor = 0.8; // 高质量：缩放到80%
+                } else {
+                    scaleFactor = 0.9; // 最高质量：缩放到90%
                 }
                 
-                // PNG压缩策略2: 如果质量较低，尝试更小的尺寸
-                if (quality < 0.7) {
-                    const muchSmallerCanvas = this.createResizedCanvas(canvas, 0.6);
-                    strategies.push(this.compressWithFormat(muchSmallerCanvas, primaryFormat, quality));
+                // 只要缩放比例小于1，就添加缩放策略
+                if (scaleFactor < 1.0) {
+                    const scaledCanvas = this.createResizedCanvas(canvas, scaleFactor);
+                    strategies.push(this.compressWithFormat(scaledCanvas, primaryFormat, quality));
                 }
+                
+                // PNG压缩策略2: 如果原图较大，尝试更激进的压缩
+                if (canvas.width > 800 || canvas.height > 800) {
+                    const aggressiveScaleFactor = Math.max(0.4, scaleFactor - 0.2);
+                    const aggressiveCanvas = this.createResizedCanvas(canvas, aggressiveScaleFactor);
+                    strategies.push(this.compressWithFormat(aggressiveCanvas, primaryFormat, quality));
+                }
+                
+                // PNG压缩策略3: 尝试降低颜色深度（通过重新绘制实现）
+                const optimizedCanvas = this.createOptimizedPngCanvas(canvas);
+                strategies.push(this.compressWithFormat(optimizedCanvas, primaryFormat, quality));
             }
         }
         
@@ -319,6 +333,39 @@ class ImageCompressor {
         }
         
         return validResults;
+    }
+
+    createOptimizedPngCanvas(originalCanvas) {
+        const optimizedCanvas = document.createElement('canvas');
+        optimizedCanvas.width = originalCanvas.width;
+        optimizedCanvas.height = originalCanvas.height;
+        
+        const ctx = optimizedCanvas.getContext('2d');
+        
+        // 设置图像平滑
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // 绘制原图
+        ctx.drawImage(originalCanvas, 0, 0);
+        
+        // 获取图像数据进行颜色优化
+        const imageData = ctx.getImageData(0, 0, optimizedCanvas.width, optimizedCanvas.height);
+        const data = imageData.data;
+        
+        // 简单的颜色量化：减少颜色精度
+        for (let i = 0; i < data.length; i += 4) {
+            // 将每个颜色通道量化到较少的级别
+            data[i] = Math.round(data[i] / 8) * 8;     // Red
+            data[i + 1] = Math.round(data[i + 1] / 8) * 8; // Green
+            data[i + 2] = Math.round(data[i + 2] / 8) * 8; // Blue
+            // Alpha通道保持不变
+        }
+        
+        // 将优化后的数据放回canvas
+        ctx.putImageData(imageData, 0, 0);
+        
+        return optimizedCanvas;
     }
 
     createResizedCanvas(originalCanvas, scaleFactor) {
@@ -366,8 +413,6 @@ class ImageCompressor {
                     // 检查是否是浏览器不支持的格式
                     if (format === 'image/webp' && !this.formatSupport.webp) {
                         console.error('浏览器不支持WebP格式编码');
-                    } else if (format === 'image/avif' && !this.formatSupport.avif) {
-                        console.error('浏览器不支持AVIF格式编码');
                     }
                     
                     resolve({
@@ -391,8 +436,7 @@ class ImageCompressor {
 
     async detectFormatSupport() {
         const support = {
-            webp: false,
-            avif: false
+            webp: false
         };
         
         // 检测WebP支持
@@ -405,18 +449,6 @@ class ImageCompressor {
             support.webp = webpBlob !== null;
         } catch (e) {
             support.webp = false;
-        }
-        
-        // 检测AVIF支持
-        try {
-            const avifCanvas = document.createElement('canvas');
-            avifCanvas.width = avifCanvas.height = 1;
-            const avifBlob = await new Promise(resolve => {
-                avifCanvas.toBlob(resolve, 'image/avif');
-            });
-            support.avif = avifBlob !== null;
-        } catch (e) {
-            support.avif = false;
         }
         
         return support;
@@ -435,16 +467,6 @@ class ImageCompressor {
         const formatSelect = document.getElementById('formatSelect');
         const formatInfo = document.getElementById('formatInfo');
         const formatNote = formatInfo.querySelector('.format-note');
-        const avifOption = document.getElementById('avifOption');
-
-        // 根据浏览器支持情况启用/禁用选项
-        if (!this.formatSupport.avif) {
-            avifOption.disabled = true;
-            avifOption.textContent = 'AVIF (浏览器不支持编码)';
-        } else {
-            avifOption.disabled = false;
-            avifOption.textContent = 'AVIF (最新格式，高压缩率)';
-        }
 
         // 格式选择变化时显示提示信息
         formatSelect.addEventListener('change', (e) => {
@@ -458,15 +480,6 @@ class ImageCompressor {
         let showInfo = false;
 
         switch (format) {
-            case 'avif':
-                if (!this.formatSupport.avif) {
-                    message = '⚠️ 您的浏览器不支持AVIF格式编码。选择此格式将无法进行压缩，请选择其他格式或使用支持AVIF的现代浏览器。';
-                    showInfo = true;
-                } else {
-                    message = '✅ AVIF格式提供最佳压缩率，文件比JPEG小30-50%。输出文件将强制为AVIF格式。';
-                    showInfo = true;
-                }
-                break;
             case 'webp':
                 if (!this.formatSupport.webp) {
                     message = '⚠️ 您的浏览器不支持WebP格式编码。选择此格式将无法进行压缩，请选择其他格式或使用支持WebP的浏览器。';
@@ -509,9 +522,6 @@ class ImageCompressor {
         } else if (selectedFormat === 'webp') {
             // 用户选择WebP，强制输出WebP格式
             return 'image/webp';
-        } else if (selectedFormat === 'avif') {
-            // 用户选择AVIF，强制输出AVIF格式
-            return 'image/avif';
         }
         return originalType;
     }

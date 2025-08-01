@@ -31,10 +31,10 @@
                             <path d="M32 20V44M20 32L32 20L44 32" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         <h3>拖拽图片到这里或点击上传</h3>
-                        <p>支持 JPEG、PNG、WebP、AVIF 格式，最大 10MB</p>
+                        <p>支持 JPEG、PNG、WebP 格式，最大 10MB</p>
                         <button class="upload-btn" id="uploadBtn">选择图片</button>
                     </div>
-                    <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml,image/avif" multiple style="display: none;">
+                    <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml" multiple style="display: none;">
                 </div>
             </div>
 
@@ -57,7 +57,6 @@
                             <option value="jpeg">JPEG</option>
                             <option value="png">PNG</option>
                             <option value="webp">WebP</option>
-                            <option value="avif" id="avifOption">AVIF (高压缩率)</option>
                         </select>
                         <div class="format-info" id="formatInfo" style="display: none;">
                             <small class="format-note"></small>
